@@ -2,5 +2,5 @@ openai
 tiktoken
 streamlit
 langchain
-unstructured[all-docs]
 opencv-python-headless
+unstructured[all-docs]
