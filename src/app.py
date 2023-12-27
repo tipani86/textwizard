@@ -1,0 +1,156 @@
+import os
+import asyncio
+import tiktoken
+import streamlit as st
+from pathlib import Path
+from openai import AsyncOpenAI
+from langchain.document_loaders import UnstructuredFileLoader
+
+openai_api_key_env = os.getenv("OPENAI_API_KEY", None)
+
+if "INITIAL_PROMPT" not in st.session_state:
+    st.session_state["INITIAL_PROMPT"] = "You are an expert in the field of text analysis and production (writing). Based on the user uploaded text and their instructions, produce an appropriate response."
+
+def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0613"):
+    """Return the number of tokens used by a list of messages."""
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        print("Warning: model not found. Using cl100k_base encoding.")
+        encoding = tiktoken.get_encoding("cl100k_base")
+    if model in {
+        "gpt-3.5-turbo-0613",
+        "gpt-3.5-turbo-16k-0613",
+        "gpt-4-0314",
+        "gpt-4-32k-0314",
+        "gpt-4-0613",
+        "gpt-4-32k-0613",
+        }:
+        tokens_per_message = 3
+        tokens_per_name = 1
+    elif model == "gpt-3.5-turbo-0301":
+        tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+        tokens_per_name = -1  # if there's a name, the role is omitted
+    elif "gpt-3.5-turbo" in model:
+        print("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
+        return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0613")
+    elif "gpt-4" in model:
+        print("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
+        return num_tokens_from_messages(messages, model="gpt-4-0613")
+    else:
+        raise NotImplementedError(
+            f"""num_tokens_from_messages() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
+        )
+    num_tokens = 0
+    for message in messages:
+        num_tokens += tokens_per_message
+        for key, value in message.items():
+            num_tokens += len(encoding.encode(value))
+            if key == "name":
+                num_tokens += tokens_per_name
+    num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+    return num_tokens
+
+@st.cache_data(show_spinner=False)
+def load_file(fn):
+    loader = UnstructuredFileLoader(fn)
+    return loader.load()
+
+
+async def main():
+
+    st.set_page_config(
+        page_title="TextWizard",
+        page_icon="🧙‍♂️",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+    with st.sidebar:
+        openai_api_key = st.text_input("OpenAI API Key", type="password", value=openai_api_key_env if openai_api_key_env else "")
+        if not openai_api_key or len(openai_api_key) == 0:
+            st.stop()
+        
+    client = AsyncOpenAI(api_key=openai_api_key)
+
+    st.title("TextWizard")
+
+    system_prompt_col, file_upload_col = st.columns(2)
+
+    with system_prompt_col:
+        initial_prompt = st.text_area("System Prompt", value=st.session_state["INITIAL_PROMPT"], height=120)
+    if initial_prompt != st.session_state["INITIAL_PROMPT"]:
+        st.session_state["INITIAL_PROMPT"] = initial_prompt
+
+    with file_upload_col:
+        uploaded_file = st.file_uploader("Upload a File (.docx, .pdf)", type=["docx", "pdf"])
+    if not uploaded_file:
+        st.stop()
+
+    extension = Path(uploaded_file.name).suffix
+    temp_fn = Path("/tmp") / f"{uploaded_file.file_id}{extension}"
+    temp_fn.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(temp_fn, "wb") as f:
+        f.write(uploaded_file.getvalue())
+
+    with st.spinner("Loading document..."):
+        docs = load_file(str(temp_fn))
+
+    # Remove the temp file folder (including all its contents)
+    temp_fn.unlink()
+
+    extracted_text_col, user_prompt_col = st.columns(2)
+
+    with extracted_text_col:
+        extracted_text = st.text_area("Review Uploaded Text", value=docs[0].page_content, height=230)
+
+    messages = [
+        {"role": "system", "content": initial_prompt},
+        {"role": "system", "content": f"USER-UPLOADED-TEXT:\n\n{extracted_text}"},
+    ]
+
+    with user_prompt_col:
+        user_prompt = st.text_area("User Instruction", placeholder="Instruct the AI how to process your text", height=100)
+        messages.append({"role": "user", "content": user_prompt})
+
+
+        num_tokens = num_tokens_from_messages(messages)
+        max_tokens = 124 * 1000 # 120k assuming gpt-4-turbo with 128k total tokens but 8k left for output
+
+        if num_tokens > max_tokens:
+            st.error(f"Error: the uploaded file is too large. It has {num_tokens} tokens, but the maximum is {max_tokens}.")
+            st.stop()
+
+        st.success(f"Approximate number of tokens (including system prompt): {num_tokens}, or {int(round(100 * num_tokens / max_tokens, 0))}% of max token count.")
+        submit = st.button("Submit", type="primary")
+
+    if submit:
+
+        reply_box = st.empty()
+
+        reply_message = ""
+
+        with reply_box:
+            with st.chat_message("assistant", avatar="🧙‍♂️"):
+                st.markdown(f"{reply_message}█")
+        
+        async for chunk in await client.chat.completions.create(
+            model="gpt-4-1106-preview",
+            messages = messages,
+            temperature=0.1,
+            max_tokens=4000,
+            stream=True,
+        ):
+            content = chunk.choices[0].delta.content
+            if content:
+                reply_message += content
+                with reply_box:
+                    with st.chat_message("assistant", avatar="🧙‍♂️"):
+                        st.markdown(f"{reply_message}█")
+        with reply_box:
+            with st.chat_message("assistant", avatar="🧙‍♂️"):
+                st.markdown(reply_message)
+
+if __name__ == "__main__":
+    asyncio.run(main())
