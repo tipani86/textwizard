@@ -1,4 +1,5 @@
 import os
+import base64
 import asyncio
 import tiktoken
 from modules import *
@@ -7,10 +8,12 @@ from pathlib import Path
 from openai import AsyncOpenAI
 from langchain.document_loaders import UnstructuredFileLoader
 
+FILE_ROOT = Path(__file__).parent
 openai_api_key_env = os.getenv("OPENAI_API_KEY", None)
 
 if "INITIAL_PROMPT" not in st.session_state:
     st.session_state["INITIAL_PROMPT"] = "You are an expert in the field of text analysis and production (writing). Based on the user uploaded text and their instructions, produce an appropriate response."
+
 
 def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0613"):
     """Return the number of tokens used by a list of messages."""
@@ -52,17 +55,25 @@ def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0613"):
     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
     return num_tokens
 
+
+@st.cache_data(show_spinner=False)
+def get_local_img(file_path: Path) -> str:
+    # Load a byte image and return its base64 encoded string
+    return base64.b64encode(open(file_path, "rb").read()).decode("utf-8")
+
+
 @st.cache_data(show_spinner=False)
 def load_file(fn):
     loader = UnstructuredFileLoader(fn)
     return loader.load()
+
 
 def construct_request_message(
     messages: list[dict],
     module_prompt: str,
 ):
     return messages + [
-        {"role": "user", "content": f"Please generate the output based on the template within the <> brackets but don't output any of the template text directly. You can use markdown to render some output items such as tables. Start generating the report without any upfront explanations:\n\n{module_prompt}"}
+        {"role": "user", "content": f"Please generate the output based on the template within the <> brackets but don't output any of the template text directly. If the reference material doesn't include relevant contents to populate some sections, display the headers but note in the contents that there is not enough data. You can use markdown to render some output items such as tables. Start generating the report without any upfront explanations:\n\n{module_prompt}"}
     ]
 
 
@@ -172,7 +183,8 @@ async def main():
 
             with reply_box:
                 with st.chat_message("assistant", avatar="🧙‍♂️"):
-                    st.markdown(f"{reply_message}█")
+                    loading_fp = FILE_ROOT / "loading.gif"
+                    st.markdown(f"<img src='data:image/gif;base64,{get_local_img(loading_fp)}' width=30 height=10> █")
 
             for i, section in enumerate(sections):
                 request_messages = construct_request_message(messages, MODULES[specialty][section])
