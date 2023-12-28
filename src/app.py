@@ -166,7 +166,7 @@ async def main():
     input_token_cost_per_mille = 0.01
     output_token_cost_per_mille = 0.03
     total_cost = (total_tokens / 1000 * input_token_cost_per_mille) + len(sections) * (max_output_tokens_per_request / 1000 * output_token_cost_per_mille)
-    status_container.success(f"Approximate total tokens: {total_tokens}. Approximate single request tokens: {highest_token_use} or {int(round(100 * highest_token_use / max_tokens, 0))}% of max token count. Maximum cost for this run would be: ${total_cost:.2f}.", icon="✅")
+    status_container.success(f"Approximate total input tokens: `{total_tokens}`. Largest single section input tokens: `{highest_token_use}` or `{int(round(100 * highest_token_use / max_tokens, 0))}%` of max token count. Estimated maximum cost for this run would be: `${total_cost:.2f}`.", icon="✅")
     
     if highest_token_use > max_tokens:
         status_container.error(f"Error: the uploaded file is too large. Combined with the longest section template, it has {highest_token_use} tokens, but the maximum is {max_tokens}.", icon="⚠️")
