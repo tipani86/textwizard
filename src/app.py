@@ -62,7 +62,7 @@ def construct_request_message(
     module_prompt: str,
 ):
     return messages + [
-        {"role": "user", "content": f"Please generate the output based on the template within the <> brackets but don't output any of the template text directly. Start generating the report without any upfront explanations:\n\n{module_prompt}"}
+        {"role": "user", "content": f"Please generate the output based on the template within the <> brackets but don't output any of the template text directly. You can use markdown to render some output items such as tables. Start generating the report without any upfront explanations:\n\n{module_prompt}"}
     ]
 
 
