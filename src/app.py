@@ -162,7 +162,11 @@ async def main():
                     total_tokens += num_tokens
     
     max_tokens = 124 * 1000 # 120k assuming gpt-4-turbo with 128k total tokens but 8k left for output
-    status_container.success(f"Approximate total tokens: {total_tokens}. Approximate single request tokens: {highest_token_use} or {int(round(100 * highest_token_use / max_tokens, 0))}% of max token count.", icon="✅")
+    max_output_tokens_per_request = 4000
+    input_token_cost_per_mille = 0.01
+    output_token_cost_per_mille = 0.03
+    total_cost = (total_tokens / 1000 * input_token_cost_per_mille) + len(sections) * (max_output_tokens_per_request / 1000 * output_token_cost_per_mille)
+    status_container.success(f"Approximate total tokens: {total_tokens}. Approximate single request tokens: {highest_token_use} or {int(round(100 * highest_token_use / max_tokens, 0))}% of max token count. Maximum cost for this run would be: ${total_cost:.2f}.", icon="✅")
     
     if highest_token_use > max_tokens:
         status_container.error(f"Error: the uploaded file is too large. Combined with the longest section template, it has {highest_token_use} tokens, but the maximum is {max_tokens}.", icon="⚠️")
@@ -192,7 +196,7 @@ async def main():
                     model="gpt-4-1106-preview",
                     messages=request_messages,
                     temperature=0.1,
-                    max_tokens=4000,
+                    max_tokens=max_output_tokens_per_request,
                     stream=True,
                 ):
                     content = chunk.choices[0].delta.content
