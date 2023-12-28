@@ -62,7 +62,7 @@ def construct_request_message(
     module_prompt: str,
 ):
     return messages + [
-        {"role": "system", "content": f"Please adhere to below output format to organize your response and follow the template immediately without any upfront explanations:\n\n{module_prompt}"}
+        {"role": "system", "content": f"Please adhere to below output format to organize your response. Use the instructions inside the <> brackets as guidance but don't print the instructions themselves in the response. Start output immediately without any upfront explanations:\n\n{module_prompt}"}
     ]
 
 
@@ -130,8 +130,8 @@ async def main():
             
     messages = [
         {"role": "system", "content": initial_prompt},
+        {"role": "system", "content": f"USER-UPLOADED-TEXT:\n\n{extracted_text}"},
         {"role": "user", "content": user_prompt},
-        {"role": "system", "content": f"USER-UPLOADED-TEXT:\n\n{extracted_text}"}
     ]
 
     total_tokens = 0

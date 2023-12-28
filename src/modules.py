@@ -1,28 +1,27 @@
 MODULES = {
     "Finance": {
-        "Financial Analysis": """<Template>[ SECTION: FINANCIAL ANALYSIS ]
+        "Financial Analysis": """<Template>
+        < SECTION: FINANCIAL ANALYSIS >
 
-        [ HEADERS ]
+        < HEADER: OVERVIEW >
 
-        OVERVIEW
+            < General summary of the overall financial status of the entity. >
 
-            [ General summary of the overall financial status of the entity. ]
+        < HEADER: BALANCE SHEET >
 
-        BALANCE SHEET
+            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
 
-            [ Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. ]
+        < HEADER: INCOME STATEMENT >
 
-        INCOME STATEMENT
+            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
 
-            [ Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. ]
+        < HEADER: CASH FLOW STATEMENT >
 
-        CASH FLOW STATEMENT
+            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
 
-            [ Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. ]
+        < HEADER: KEY FINANCIAL METRICS >
 
-        KEY FINANCIAL METRICS
-
-            [ Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. ]
+            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
 </Template>""",
     },
 }
