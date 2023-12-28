@@ -1,6 +1,7 @@
 import os
 import asyncio
 import tiktoken
+from modules import *
 import streamlit as st
 from pathlib import Path
 from openai import AsyncOpenAI
@@ -56,6 +57,14 @@ def load_file(fn):
     loader = UnstructuredFileLoader(fn)
     return loader.load()
 
+def construct_request_message(
+    messages: list[dict],
+    module_prompt: str,
+):
+    return messages + [
+        {"role": "system", "content": f"Please adhere to below output format to organize your response and follow the template immediately without any upfront explanations:\n\n{module_prompt}"}
+    ]
+
 
 async def main():
 
@@ -66,6 +75,12 @@ async def main():
         initial_sidebar_state="expanded",
     )
 
+    ### Layout ###
+
+    settings_container = st.container()
+    status_container = st.empty()
+    generator_container = st.container()
+
     with st.sidebar:
         openai_api_key = st.text_input("OpenAI API Key", type="password", value=openai_api_key_env if openai_api_key_env else "")
         if not openai_api_key or len(openai_api_key) == 0:
@@ -73,84 +88,112 @@ async def main():
         
     client = AsyncOpenAI(api_key=openai_api_key)
 
-    st.title("TextWizard")
+    with settings_container:
+        st.title("TextWizard")
 
-    system_prompt_col, file_upload_col = st.columns(2)
+        system_prompt_col, file_upload_col = st.columns(2)
 
-    with system_prompt_col:
-        initial_prompt = st.text_area("System Prompt", value=st.session_state["INITIAL_PROMPT"], height=120)
-    if initial_prompt != st.session_state["INITIAL_PROMPT"]:
-        st.session_state["INITIAL_PROMPT"] = initial_prompt
+        with system_prompt_col:
+            initial_prompt = st.text_area("System Prompt", value=st.session_state["INITIAL_PROMPT"], height=120)
+        if initial_prompt != st.session_state["INITIAL_PROMPT"]:
+            st.session_state["INITIAL_PROMPT"] = initial_prompt
 
-    with file_upload_col:
-        uploaded_file = st.file_uploader("Upload a File (.docx, .pdf)", type=["docx", "pdf"])
-    if not uploaded_file:
-        st.stop()
-
-    extension = Path(uploaded_file.name).suffix
-    temp_fn = Path("/tmp") / f"{uploaded_file.file_id}{extension}"
-    temp_fn.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(temp_fn, "wb") as f:
-        f.write(uploaded_file.getvalue())
-
-    with st.spinner("Loading document..."):
-        docs = load_file(str(temp_fn))
-
-    # Remove the temp file folder (including all its contents)
-    temp_fn.unlink()
-
-    extracted_text_col, user_prompt_col = st.columns(2)
-
-    with extracted_text_col:
-        extracted_text = st.text_area("Review Uploaded Text", value=docs[0].page_content, height=230)
-
-    messages = [
-        {"role": "system", "content": initial_prompt},
-        {"role": "system", "content": f"USER-UPLOADED-TEXT:\n\n{extracted_text}"},
-    ]
-
-    with user_prompt_col:
-        user_prompt = st.text_area("User Instruction", placeholder="Instruct the AI how to process your text", height=100)
-        messages.append({"role": "user", "content": user_prompt})
-
-
-        num_tokens = num_tokens_from_messages(messages)
-        max_tokens = 124 * 1000 # 120k assuming gpt-4-turbo with 128k total tokens but 8k left for output
-
-        if num_tokens > max_tokens:
-            st.error(f"Error: the uploaded file is too large. It has {num_tokens} tokens, but the maximum is {max_tokens}.")
+        with file_upload_col:
+            uploaded_file = st.file_uploader("Upload a File (.docx, .pdf)", type=["docx", "pdf"])
+        if not uploaded_file:
             st.stop()
 
-        st.success(f"Approximate number of tokens (including system prompt): {num_tokens}, or {int(round(100 * num_tokens / max_tokens, 0))}% of max token count.")
-        submit = st.button("Submit", type="primary")
+        user_prompt_col, extracted_text_col = st.columns(2)
+
+        with user_prompt_col:
+            user_prompt = st.text_area("User Instruction", placeholder="Instruct the AI how to process your text", height=100)
+            specialty = st.selectbox("Specialty", options=sorted(MODULES.keys()), index=None)
+            if specialty:
+                sections = st.multiselect("Sections", options=sorted(MODULES[specialty].keys()))
+
+        with extracted_text_col:
+
+            extension = Path(uploaded_file.name).suffix
+            temp_fn = Path("/tmp") / f"{uploaded_file.file_id}{extension}"
+            temp_fn.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(temp_fn, "wb") as f:
+                f.write(uploaded_file.getvalue())
+
+            with st.spinner("Loading document..."):
+                docs = load_file(str(temp_fn))
+
+            # Remove the temp file folder (including all its contents)
+            temp_fn.unlink()
+
+            extracted_text = st.text_area("Review Uploaded Text", value=docs[0].page_content, height=270)
+            
+    messages = [
+        {"role": "system", "content": initial_prompt},
+        {"role": "user", "content": user_prompt},
+        {"role": "system", "content": f"USER-UPLOADED-TEXT:\n\n{extracted_text}"}
+    ]
+
+    total_tokens = 0
+    highest_token_use = 0
+
+    with generator_container:
+        if sections:
+            st.write("**Output Sections Preview**")
+            for i, section in enumerate(sections):
+                st.markdown(f"{i + 1}. {section}", help=MODULES[specialty][section])
+                num_tokens = num_tokens_from_messages(
+                    construct_request_message(messages, MODULES[specialty][section])
+                )
+                if num_tokens > highest_token_use:
+                    highest_token_use = num_tokens
+                total_tokens += num_tokens
+    
+    
+    max_tokens = 124 * 1000 # 120k assuming gpt-4-turbo with 128k total tokens but 8k left for output
+    status_container.success(f"Approximate total tokens: {total_tokens}. Approximate single request tokens: {highest_token_use} or {int(round(100 * highest_token_use / max_tokens, 0))}% of max token count.")
+    
+    if highest_token_use > max_tokens:
+        status_container.error(f"Error: the uploaded file is too large. Combined with the longest section template, it has {highest_token_use} tokens, but the maximum is {max_tokens}.")
+        st.stop()
+
+    if total_tokens <= 0:
+        status_container.info("Please select at least one section.")
+        st.stop()
+
+    submit = st.button("Submit", type="primary")
 
     if submit:
 
-        reply_box = st.empty()
+        with generator_container:
 
-        reply_message = ""
+            reply_box = st.empty()
+            reply_message = ""
 
-        with reply_box:
-            with st.chat_message("assistant", avatar="🧙‍♂️"):
-                st.markdown(f"{reply_message}█")
-        
-        async for chunk in await client.chat.completions.create(
-            model="gpt-4-1106-preview",
-            messages = messages,
-            temperature=0.1,
-            max_tokens=4000,
-            stream=True,
-        ):
-            content = chunk.choices[0].delta.content
-            if content:
-                reply_message += content
-                with reply_box:
-                    with st.chat_message("assistant", avatar="🧙‍♂️"):
-                        st.markdown(f"{reply_message}█")
-        with reply_box:
-            with st.chat_message("assistant", avatar="🧙‍♂️"):
-                st.markdown(reply_message)
+            with reply_box:
+                with st.chat_message("assistant", avatar="🧙‍♂️"):
+                    st.markdown(f"{reply_message}█")
+
+            for i, section in enumerate(sections):
+                request_messages = construct_request_message(messages, MODULES[specialty][section])
+            
+                async for chunk in await client.chat.completions.create(
+                    model="gpt-4-1106-preview",
+                    messages=request_messages,
+                    temperature=0.1,
+                    max_tokens=4000,
+                    stream=True,
+                ):
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        reply_message += content
+                        with reply_box:
+                            with st.chat_message("assistant", avatar="🧙‍♂️"):
+                                st.markdown(f"{reply_message}█")
+            
+            with reply_box:
+                with st.chat_message("assistant", avatar="🧙‍♂️"):
+                    st.markdown(reply_message)
 
 if __name__ == "__main__":
     asyncio.run(main())
