@@ -172,12 +172,10 @@ async def main():
         status_container.info("Please select at least one section.")
         st.stop()
 
-    submit = st.button("Submit", type="primary")
+    with generator_container:
 
-    if submit:
-
-        with generator_container:
-
+        submit = st.button("Submit", type="primary")
+        if submit:
             reply_box = st.empty()
             reply_message = ""
 
@@ -187,6 +185,7 @@ async def main():
                     st.markdown(f"<img src='data:image/gif;base64,{get_local_img(loading_fp)}' width=30 height=10> █", unsafe_allow_html=True)
 
             for i, section in enumerate(sections):
+                status_container.info(f"Generating section {section} ({i + 1}/{len(sections)})...")
                 request_messages = construct_request_message(messages, user_prompt, MODULES[specialty][section])
             
                 async for chunk in await client.chat.completions.create(
@@ -203,6 +202,7 @@ async def main():
                             with st.chat_message("assistant", avatar="🧙‍♂️"):
                                 st.markdown(f"{reply_message}█")
             
+            status_container.success(f"Successfully generated {len(sections)} sections.")
             with reply_box:
                 with st.chat_message("assistant", avatar="🧙‍♂️"):
                     st.markdown(reply_message)
