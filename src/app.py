@@ -89,7 +89,7 @@ async def main():
     client = AsyncOpenAI(api_key=openai_api_key)
 
     with settings_container:
-        st.title("TextWizard")
+        st.title("TextWizard 🧙‍♂️")
 
         system_prompt_col, file_upload_col = st.columns(2)
 
