@@ -70,10 +70,11 @@ def load_file(fn):
 
 def construct_request_message(
     messages: list[dict],
+    user_prompt: str,
     module_prompt: str,
 ):
     return messages + [
-        {"role": "user", "content": f"Please generate the output based on the template within the <> brackets but don't output any of the template text directly. If the reference material doesn't include relevant contents to populate some sections, display the headers but note in the contents that there is not enough data. You can use markdown to render some output items such as tables. Start generating the report without any upfront explanations:\n\n{module_prompt}"}
+        {"role": "user", "content": f"Please generate the output based on below template that is within the <> brackets but don't output any of the template text directly. If the reference material doesn't include relevant contents to populate some sections, display the headers but note in the contents that there is not enough data. You can use markdown to render some output items such as tables. Start generating the report without any upfront explanations:\n\n{module_prompt}\n\n{user_prompt}"}
     ]
 
 
@@ -142,7 +143,6 @@ async def main():
     messages = [
         {"role": "system", "content": initial_prompt},
         {"role": "system", "content": f"USER-UPLOADED-TEXT:\n\n{extracted_text}"},
-        {"role": "user", "content": user_prompt},
     ]
 
     total_tokens = 0
@@ -155,7 +155,7 @@ async def main():
                 for i, section in enumerate(sections):
                     st.markdown(f"{i + 1}. {section}", help=MODULES[specialty][section])
                     num_tokens = num_tokens_from_messages(
-                        construct_request_message(messages, MODULES[specialty][section])
+                        construct_request_message(messages, user_prompt, MODULES[specialty][section])
                     )
                     if num_tokens > highest_token_use:
                         highest_token_use = num_tokens
@@ -184,10 +184,10 @@ async def main():
             with reply_box:
                 with st.chat_message("assistant", avatar="🧙‍♂️"):
                     loading_fp = FILE_ROOT / "loading.gif"
-                    st.markdown(f"<img src='data:image/gif;base64,{get_local_img(loading_fp)}' width=30 height=10> █")
+                    st.markdown(f"<img src='data:image/gif;base64,{get_local_img(loading_fp)}' width=30 height=10> █", unsafe_allow_html=True)
 
             for i, section in enumerate(sections):
-                request_messages = construct_request_message(messages, MODULES[specialty][section])
+                request_messages = construct_request_message(messages, user_prompt, MODULES[specialty][section])
             
                 async for chunk in await client.chat.completions.create(
                     model="gpt-4-1106-preview",
