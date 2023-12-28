@@ -162,14 +162,14 @@ async def main():
                     total_tokens += num_tokens
     
     max_tokens = 124 * 1000 # 120k assuming gpt-4-turbo with 128k total tokens but 8k left for output
-    status_container.success(f"Approximate total tokens: {total_tokens}. Approximate single request tokens: {highest_token_use} or {int(round(100 * highest_token_use / max_tokens, 0))}% of max token count.")
+    status_container.success(f"Approximate total tokens: {total_tokens}. Approximate single request tokens: {highest_token_use} or {int(round(100 * highest_token_use / max_tokens, 0))}% of max token count.", icon="✅")
     
     if highest_token_use > max_tokens:
-        status_container.error(f"Error: the uploaded file is too large. Combined with the longest section template, it has {highest_token_use} tokens, but the maximum is {max_tokens}.")
+        status_container.error(f"Error: the uploaded file is too large. Combined with the longest section template, it has {highest_token_use} tokens, but the maximum is {max_tokens}.", icon="⚠️")
         st.stop()
 
     if total_tokens <= 0:
-        status_container.info("Please select at least one section.")
+        status_container.info("Please select at least one section.", icon="ℹ️")
         st.stop()
 
     with generator_container:
@@ -185,7 +185,7 @@ async def main():
                     st.markdown(f"<img src='data:image/gif;base64,{get_local_img(loading_fp)}' width=30 height=10> █", unsafe_allow_html=True)
 
             for i, section in enumerate(sections):
-                status_container.info(f"Generating section {section} ({i + 1}/{len(sections)})...")
+                status_container.info(f"Generating section {section} ({i + 1}/{len(sections)})...", icon="⏳")
                 request_messages = construct_request_message(messages, user_prompt, MODULES[specialty][section])
             
                 async for chunk in await client.chat.completions.create(
@@ -201,8 +201,10 @@ async def main():
                         with reply_box:
                             with st.chat_message("assistant", avatar="🧙‍♂️"):
                                 st.markdown(f"{reply_message}█")
-            
-            status_container.success(f"Successfully generated {len(sections)} sections.")
+            if len(sections) > 1:
+                status_container.success(f"Successfully generated {len(sections)} sections.", icon="✅")
+            else:
+                status_container.success("Successfully generated 1 section.", icon="✅")
             with reply_box:
                 with st.chat_message("assistant", avatar="🧙‍♂️"):
                     st.markdown(reply_message)
