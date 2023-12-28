@@ -1,27 +1,22 @@
 MODULES = {
     "Finance": {
         "Financial Analysis": """<Template>
-        < SECTION: FINANCIAL ANALYSIS >
+SECTION: FINANCIAL ANALYSIS
 
-        < HEADER: OVERVIEW >
+HEADER: OVERVIEW
+General summary of the overall financial status of the entity.
 
-            < General summary of the overall financial status of the entity. >
+HEADER: BALANCE SHEET
+Include one or several tables relevant for this subsection, followed by written details of the most recent key figures, changes, trends and other relevant information.
 
-        < HEADER: BALANCE SHEET >
+HEADER: INCOME STATEMENT
+Include one or several tables relevant for this subsection, followed by written details of the most recent key figures, changes, trends and other relevant information.
 
-            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
+HEADER: CASH FLOW STATEMENT
+Include one or several tables relevant for this subsection, followed by written details of the most recent key figures, changes, trends and other relevant information.
 
-        < HEADER: INCOME STATEMENT >
-
-            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
-
-        < HEADER: CASH FLOW STATEMENT >
-
-            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
-
-        < HEADER: KEY FINANCIAL METRICS >
-
-            < Includes one or several tables relevant for this subsection, followed by a written highlight of the most recent key figures, changes, trends and other relevant information. >
+HEADER: KEY FINANCIAL METRICS
+Include one or several tables relevant for this subsection, followed by written details of the most recent key figures, changes, trends and other relevant information.
 </Template>""",
     },
 }

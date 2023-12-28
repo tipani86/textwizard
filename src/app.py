@@ -62,7 +62,7 @@ def construct_request_message(
     module_prompt: str,
 ):
     return messages + [
-        {"role": "system", "content": f"Please adhere to below output format to organize your response. Use the instructions inside the <> brackets as guidance but don't print the instructions themselves in the response. Start output immediately without any upfront explanations:\n\n{module_prompt}"}
+        {"role": "user", "content": f"Please generate the output based on the template within the <> brackets but don't output any of the template text directly. Start generating the report without any upfront explanations:\n\n{module_prompt}"}
     ]
 
 
