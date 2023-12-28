@@ -137,18 +137,18 @@ async def main():
     total_tokens = 0
     highest_token_use = 0
 
-    with generator_container:
+    if specialty:
         if sections:
-            st.write("**Output Sections Preview**")
-            for i, section in enumerate(sections):
-                st.markdown(f"{i + 1}. {section}", help=MODULES[specialty][section])
-                num_tokens = num_tokens_from_messages(
-                    construct_request_message(messages, MODULES[specialty][section])
-                )
-                if num_tokens > highest_token_use:
-                    highest_token_use = num_tokens
-                total_tokens += num_tokens
-    
+            with generator_container:
+                st.write("**Output Sections Preview**")
+                for i, section in enumerate(sections):
+                    st.markdown(f"{i + 1}. {section}", help=MODULES[specialty][section])
+                    num_tokens = num_tokens_from_messages(
+                        construct_request_message(messages, MODULES[specialty][section])
+                    )
+                    if num_tokens > highest_token_use:
+                        highest_token_use = num_tokens
+                    total_tokens += num_tokens
     
     max_tokens = 124 * 1000 # 120k assuming gpt-4-turbo with 128k total tokens but 8k left for output
     status_container.success(f"Approximate total tokens: {total_tokens}. Approximate single request tokens: {highest_token_use} or {int(round(100 * highest_token_use / max_tokens, 0))}% of max token count.")
