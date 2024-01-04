@@ -119,7 +119,7 @@ async def main():
 
         with user_prompt_col:
             user_prompt = st.text_area("User Instruction", placeholder="Instruct the AI how to process your text", height=100)
-            specialty = st.selectbox("Specialty", options=sorted(MODULES.keys()), index=None)
+            specialty = st.selectbox("Output", options=sorted(MODULES.keys()), index=None)
             if specialty:
                 sections = st.multiselect("Sections", options=sorted(MODULES[specialty].keys()))
 
