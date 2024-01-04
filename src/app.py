@@ -161,6 +161,10 @@ async def main():
                         highest_token_use = num_tokens
                     total_tokens += num_tokens
     
+    if total_tokens <= 0:
+        status_container.info("Please select at least one section.", icon="ℹ️")
+        st.stop()
+
     max_tokens = 124 * 1000 # 120k assuming gpt-4-turbo with 128k total tokens but 8k left for output
     max_output_tokens_per_request = 4000
     input_token_cost_per_mille = 0.01
@@ -170,10 +174,6 @@ async def main():
     
     if highest_token_use > max_tokens:
         status_container.error(f"Error: the uploaded file is too large. Combined with the longest section template, it has {highest_token_use} tokens, but the maximum is {max_tokens}.", icon="⚠️")
-        st.stop()
-
-    if total_tokens <= 0:
-        status_container.info("Please select at least one section.", icon="ℹ️")
         st.stop()
 
     with generator_container:
